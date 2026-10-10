@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "recipe": {
+    "name": "Node.js app",
+    "kind": "node",
+    "bootstrap": [
+      "npm install"
+    ],
+    "build": [
+      "npm run build"
+    ],
+    "test": [
+      "npm run test",
+      "npm run lint"
+    ],
+    "start": "bash test/manual/docker-load-verify.sh",
+    "port": 5699,
+    "readinessPath": "/healthz",
+    "evidence": [
+      "Detected package.json",
+      "Package manager: npm",
+      "Scripts: build, build:watch, dev, lint, lint:fix, test, prepublishOnly",
+      "Start phase boots a real n8n in Docker with this package installed and asserts n8n registers the Composio node and its tool variant, then serves health on port 5699. It needs docker only; no Composio key is required.",
+      "The live phase of the start script (calling Composio with a consumer key) is skipped unless COMPOSIO_CONSUMER_KEY is set, so no credential is ever needed in the harness or in this repository.",
+      "readinessPath is n8n's liveness endpoint /healthz. /healthz/readiness only turns 200 once the database is connected and migrated, and the start script itself waits for /healthz/readiness before installing the package.",
+      "Set PKG_SPEC=@steprotech/n8n-nodes-composio to make the start script install the published package by name from the registry instead of the locally packed tarball.",
+      "For build and test only, run: hermes verify --json --skip-start"
+    ]
+  },
+  "updatedAt": "2026-10-10T00:00:00+00:00"
+}
