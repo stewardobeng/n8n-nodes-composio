@@ -223,7 +223,7 @@ const fields: INodeProperties[] = [
 
 export class Composio implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Composio',
+		displayName: 'Composio Connect',
 		name: 'composio',
 		icon: { light: 'file:composio.svg', dark: 'file:composio.dark.svg' },
 		group: ['transform'],

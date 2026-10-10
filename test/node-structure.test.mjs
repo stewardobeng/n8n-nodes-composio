@@ -103,6 +103,19 @@ test('the dark icon is visible on n8n dark tiles, not black on black', () => {
 	assert.match(dark, /#FFFFFF/i);
 });
 
+test('display names are unique, because n8n keys its installed_nodes table on them', () => {
+	// n8n inserts one row per node with `name` set to the node's displayName, and that column is
+	// the primary key. A duplicate display name, in this package or against anything else already
+	// installed, makes installation fail with SQLITE_CONSTRAINT / duplicate key on installed_nodes.
+	const own = [description.displayName, `${description.displayName} Tool`];
+	assert.equal(new Set(own).size, own.length, 'the node and its tool variant must not share a display name');
+	assert.notEqual(
+		description.displayName,
+		'Composio',
+		'the third-party n8n-nodes-composio already occupies the display name "Composio" in installed_nodes',
+	);
+});
+
 test('the package declares what n8n loads, with no runtime dependencies', () => {
 	const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 	assert.equal(pkg.name, '@steprotech/n8n-nodes-composio');

@@ -132,7 +132,7 @@ async function ensureSession(ctx: ComposioContext): Promise<void> {
 	const envelope = await mcpRequest(ctx, 'initialize', {
 		protocolVersion: '2025-06-18',
 		capabilities: {},
-		clientInfo: { name: 'n8n-nodes-composio', version: '0.1.0' },
+		clientInfo: { name: 'n8n-nodes-composio', version: '0.1.1' },
 	});
 	if (envelope.error !== undefined) {
 		throw new Error(
