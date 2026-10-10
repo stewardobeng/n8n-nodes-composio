@@ -1,0 +1,25 @@
+{
+	"name": "Composio verify: list connections",
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "connection",
+				"operation": "list"
+			},
+			"id": "compVerifyNode0001",
+			"name": "Composio",
+			"type": "@steprotech/n8n-nodes-composio.composio",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"credentials": {
+				"composioApi": {
+					"id": "compVerifyCred001",
+					"name": "Composio Verify"
+				}
+			}
+		}
+	],
+	"connections": {},
+	"settings": {},
+	"pinData": {}
+}
