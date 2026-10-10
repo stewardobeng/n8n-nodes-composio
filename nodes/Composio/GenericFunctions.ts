@@ -1,5 +1,7 @@
 import type { IExecuteFunctions, IHttpRequestOptions, ILoadOptionsFunctions } from 'n8n-workflow';
 
+import { META_TOOLS } from './metatools';
+
 type ComposioContext = IExecuteFunctions | ILoadOptionsFunctions;
 
 interface JsonRpcError {
@@ -147,6 +149,44 @@ export interface MetaToolOutcome {
 	text: string;
 	data: unknown;
 	isError: boolean;
+}
+
+/**
+ * Searches the Composio catalog. Argument shape per Composio's COMPOSIO_SEARCH_TOOLS documentation:
+ * `queries` is a list of structured use cases, and `session` correlates related calls.
+ * `search_strategy: 'tool_search'` skips cached plans, which is what a picker wants: matching tools
+ * rather than a workflow plan.
+ */
+export async function searchCatalog(ctx: ComposioContext, useCase: string): Promise<unknown> {
+	const outcome = await callMetaTool(ctx, META_TOOLS.searchTools, {
+		queries: [{ use_case: useCase }],
+		session: { generate_id: true },
+		search_strategy: 'tool_search',
+	});
+	return outcome.data;
+}
+
+/** Fetches the input schema for tool slugs the search already returned. */
+export async function fetchToolSchemas(ctx: ComposioContext, toolSlugs: string[]): Promise<unknown> {
+	const outcome = await callMetaTool(ctx, META_TOOLS.getToolSchemas, {
+		tool_slugs: toolSlugs,
+		include: ['input_schema'],
+	});
+	return outcome.data;
+}
+
+/**
+ * Starts or reports connections. Composio's COMPOSIO_MANAGE_CONNECTIONS takes toolkit slugs and opens
+ * an auth flow for any that are missing, so this both checks and connects.
+ */
+export async function manageConnections(
+	ctx: ComposioContext,
+	toolkits: string[],
+	reinitiateAll = false,
+): Promise<MetaToolOutcome> {
+	const args: Record<string, unknown> = { toolkits };
+	if (reinitiateAll) args.reinitiate_all = true;
+	return await callMetaTool(ctx, META_TOOLS.manageConnections, args);
 }
 
 /**

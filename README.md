@@ -36,26 +36,40 @@ Never paste a key into a chat, an issue or a repository. Keys belong in n8n's cr
 
 ## Operations
 
+Every app and every action is chosen from a **live search list**, so you never need to know a Composio
+slug. The inputs of an action are read from the action's own schema, so you pick parameter names from a
+list instead of writing JSON. Raw JSON is still there as an opt-in escape hatch.
+
 **Connection**
 
 - **Connect an App** returns the authorization link. Open it, approve in the browser, and the app is
   connected to your Composio account. Managed auth means you never create an OAuth app yourself.
-- **Wait for Connection** pauses until you finish authorizing, so the next node can rely on it.
-- **List Connections** shows which apps are connected.
-- **Remove Connection** disconnects an app and deletes its stored credentials.
+- **Check Connections** reports which of the apps you name are connected. Any app that is not connected
+  yet gets an authorization link in the output, so this doubles as "connect these three apps".
+- **Reconnect an App** replaces an existing connection with a fresh authorization flow, which is what
+  you want when credentials go stale or when you need to re-consent after a permission change.
+
+Disconnecting an app is not exposed on the consumer surface this node uses, so removal stays in the
+Composio dashboard.
 
 **Action**
 
-- **Search Actions** takes what you want to do in plain words and returns matching actions.
-- **Get Action Schemas** fetches the input schema for an action slug, so you know which fields to send.
-- **Execute an Action** runs an action slug with JSON arguments against the connected account. It can
-  also be used as a tool by an AI Agent.
+- **Search Actions** takes what you want to do in plain words and returns matching actions, which app
+  each belongs to, and which of those apps are already connected.
+- **Get Action Inputs** lists the inputs one or more actions expect, with types and required markers.
+- **Execute an Action** runs the chosen action. Set **Set Inputs** to *Using Fields* and add one row per
+  input, picking the parameter name from the list, or switch to *Using JSON* to write the arguments
+  object yourself. The node can also be used as a tool by an AI Agent.
+
+Values typed into the fields are converted sensibly: `true`, `false`, `null`, numbers and JSON objects
+or arrays are sent as those types, while identifiers keep their form, so a phone number entered as
+`0244123456` is not turned into a number.
 
 **Advanced**
 
-- **Call a Meta-Tool** sends any of Composio's seven meta-tools with arguments you supply. Composio
-  has thousands of actions with their own schemas, while n8n node parameters are fixed, so this
-  operation is the escape hatch if an action needs something the other operations do not cover yet.
+- **Call a Meta-Tool** sends any of Composio's meta-tools with arguments you supply. Composio has
+  thousands of actions with their own schemas, while n8n node parameters are fixed, so this is the
+  escape hatch for anything the operations above do not cover yet.
 
 ## Documentation
 

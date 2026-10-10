@@ -34,7 +34,7 @@ test('the node registers the resources and operations Composio Connect needs', (
 			.options.map((o) => o.value)
 			.sort();
 
-	assert.deepEqual(operationsFor('connection'), ['connect', 'list', 'remove', 'wait']);
+	assert.deepEqual(operationsFor('connection'), ['check', 'connect', 'reconnect']);
 	assert.deepEqual(operationsFor('action'), ['execute', 'schemas', 'search']);
 	assert.deepEqual(operationsFor('advanced'), ['call']);
 });
@@ -153,6 +153,53 @@ test('the credential can hold the webhook signing secret the trigger verifies ag
 	const secret = credential.properties.find((p) => p.name === 'webhookSecret');
 	assert.ok(secret, 'the credential needs a webhook signing secret field');
 	assert.equal(secret.typeOptions.password, true, 'the secret must be masked in the UI');
+});
+
+test('the everyday fields are pickers, so nobody has to know a slug or write JSON', () => {
+	const node = new Composio();
+	const byName = (name) => description.properties.find((p) => p.name === name);
+
+	// App and Action are dropdowns fed live from Composio, not free-text slug boxes.
+	for (const name of ['toolkit', 'toolkits', 'toolSlug', 'toolSlugs']) {
+		const property = byName(name);
+		assert.ok(property, `${name} must exist`);
+		assert.equal(
+			property.typeOptions?.loadOptionsMethod,
+			name.startsWith('toolkit') ? 'searchToolkits' : 'searchActions',
+			`${name} must be a picker`,
+		);
+	}
+
+	// The parameter name inside each input row is itself a picker, read from the action's schema.
+	const rows = byName('parameterRows');
+	assert.equal(rows.type, 'fixedCollection');
+	const parameterName = rows.options[0].values.find((v) => v.name === 'name');
+	assert.equal(parameterName.typeOptions.loadOptionsMethod, 'getToolParameters');
+
+	// Fields are the default way to set inputs; raw JSON is the opt-in escape hatch.
+	const inputMode = byName('inputMode');
+	assert.equal(inputMode.default, 'fields');
+	assert.deepEqual(inputMode.options.map((o) => o.value), ['fields', 'json']);
+	assert.equal(byName('arguments').displayOptions.show.inputMode[0], 'json');
+	assert.equal(byName('parameterRows').displayOptions.show.inputMode[0], 'fields');
+
+	// The three pickers the editor calls must actually be implemented.
+	const loaders = Object.keys(node.methods.loadOptions);
+	assert.deepEqual(loaders.sort(), ['getToolParameters', 'searchActions', 'searchToolkits']);
+});
+
+test('the action and connection operations use Composio\u2019s documented argument names', () => {
+	const source = readFileSync(join(root, 'nodes/Composio/Composio.node.ts'), 'utf8');
+
+	// COMPOSIO_SEARCH_TOOLS takes queries[].use_case, not a bare query.
+	assert.match(source, /queries: \[\{ use_case:/);
+	// COMPOSIO_GET_TOOL_SCHEMAS takes tool_slugs and include.
+	assert.match(source, /tool_slugs:/);
+	assert.match(source, /include: \['input_schema'\]/);
+	// COMPOSIO_MULTI_EXECUTE_TOOL takes tools[].tool_slug + arguments, and that required flag.
+	assert.match(source, /tools: \[/);
+	assert.match(source, /tool_slug: this\.getNodeParameter\('toolSlug'/);
+	assert.match(source, /sync_response_to_workbench:/);
 });
 
 test('the package declares what n8n loads, with no runtime dependencies', () => {
