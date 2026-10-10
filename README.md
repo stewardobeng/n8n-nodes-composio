@@ -2,7 +2,7 @@
 
 An n8n node for [Composio](https://composio.dev). Connect your own apps through Composio, choose an
 action, and run it in any workflow. No AI agent is required, and the node can also be used as a tool
-inside an agent.
+inside an agent. A trigger node starts workflows from app events too.
 
 Composio is an integration and authentication layer: it holds the OAuth grants for around 1,600
 apps, refreshes the tokens, and executes the action on your behalf. This node is the n8n front door
@@ -56,6 +56,33 @@ Never paste a key into a chat, an issue or a repository. Keys belong in n8n's cr
 - **Call a Meta-Tool** sends any of Composio's seven meta-tools with arguments you supply. Composio
   has thousands of actions with their own schemas, while n8n node parameters are fixed, so this
   operation is the escape hatch if an action needs something the other operations do not cover yet.
+
+## Documentation
+
+- `docs/INSTALL-OPTIONS.md` covers every way to install or update it, including troubleshooting.
+- `docs/PUBLISHING.md` covers the release loop, CI, and the tokenless trusted-publishing path.
+- `docs/PUBLISH-FROM-WINDOWS.md` is the PowerShell route for publishing from your own machine.
+
+## Trigger
+
+The **Composio Connect Trigger** starts a workflow when something happens in a connected app, such as
+a new Gmail message or a new GitHub commit.
+
+1. In Composio, note the single **webhook URL** your project delivers events to, and register the URL
+   n8n shows in the trigger node. Composio sends every project event to one URL, so this is a
+   per-project setting, not a per-workflow one.
+2. Copy the webhook **signing secret** from that subscription into the credential's *Webhook Signing
+   Secret* field.
+3. Choose the events you want. `Trigger Message` covers app events; `Connected Account Expired` tells
+   you when a connection needs re-authorizing. Use `Only These Triggers` to accept a single trigger
+   slug such as `GITHUB_COMMIT_EVENT`.
+
+Signature verification is **on by default**. Every request carries `webhook-id`, `webhook-timestamp`
+and `webhook-signature`, and the trigger recomputes an HMAC-SHA256 over
+`{webhook-id}.{webhook-timestamp}.{body}`, compares it in constant time, and refuses anything older
+than the tolerance (300 seconds by default) so a captured payload cannot be replayed. Note this while
+writing it down: with verification on and no secret in the credential, the trigger refuses to run
+rather than trusting the request, which is deliberate.
 
 ## Composio's meta-tools
 

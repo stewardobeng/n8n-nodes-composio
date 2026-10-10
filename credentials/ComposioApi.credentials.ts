@@ -35,6 +35,15 @@ export class ComposioApi implements ICredentialType {
 			description:
 				'Optional. The Composio user ID whose connections this credential uses by default. Composio derives one from the key when this is left empty. Use separate credentials if you keep several users apart.',
 		},
+		{
+			displayName: 'Webhook Signing Secret',
+			name: 'webhookSecret',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'Optional. The signing secret of your Composio webhook subscription, used by the Composio Trigger to verify that events really came from Composio. Copy it from your Composio webhook subscription settings.',
+		},
 	];
 
 	authenticate = {

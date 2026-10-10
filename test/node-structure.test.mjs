@@ -5,11 +5,13 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { Composio } from '../dist/nodes/Composio/Composio.node.js';
+import { ComposioTrigger } from '../dist/nodes/Composio/ComposioTrigger.node.js';
 import { ComposioApi } from '../dist/credentials/ComposioApi.credentials.js';
 import { META_TOOLS, META_TOOL_OPTIONS } from '../dist/nodes/Composio/metatools.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const description = new Composio().description;
+const trigger = new ComposioTrigger().description;
 const credential = new ComposioApi();
 
 const DOCUMENTED_META_TOOLS = [
@@ -79,9 +81,14 @@ test('every referenced icon exists as a square SVG, in both themes', () => {
 	};
 
 	collect(description.icon, 'nodes/Composio');
+	collect(trigger.icon, 'nodes/ComposioTrigger');
 	collect(credential.icon, 'credentials');
 
-	assert.equal(iconRefs.length, 4, 'expected light and dark icons for the node and the credential');
+	assert.equal(
+		iconRefs.length,
+		6,
+		'expected light and dark icons for the node, the trigger and the credential',
+	);
 
 	for (const [ref, base] of iconRefs) {
 		const file = join(root, base, ref.replace('file:', ''));
@@ -107,27 +114,63 @@ test('display names are unique, because n8n keys its installed_nodes table on th
 	// n8n inserts one row per node with `name` set to the node's displayName, and that column is
 	// the primary key. A duplicate display name, in this package or against anything else already
 	// installed, makes installation fail with SQLITE_CONSTRAINT / duplicate key on installed_nodes.
-	const own = [description.displayName, `${description.displayName} Tool`];
-	assert.equal(new Set(own).size, own.length, 'the node and its tool variant must not share a display name');
-	assert.notEqual(
+	const own = [
 		description.displayName,
-		'Composio',
-		'the third-party n8n-nodes-composio already occupies the display name "Composio" in installed_nodes',
-	);
+		`${description.displayName} Tool`,
+		trigger.displayName,
+	];
+	assert.equal(new Set(own).size, own.length, 'the node, its tool variant and the trigger must not share a display name');
+
+	// The third-party n8n-nodes-composio package already occupies these, and its webhook path is the
+	// bare word too, so a clash would break both packages on one instance.
+	for (const taken of ['Composio', 'Composio Tool', 'Composio Trigger']) {
+		assert.notEqual(description.displayName, taken, `"${taken}" is already used by n8n-nodes-composio`);
+		assert.notEqual(trigger.displayName, taken, `"${taken}" is already used by n8n-nodes-composio`);
+	}
+	assert.notEqual(trigger.webhooks[0].path, 'composio', 'that webhook path belongs to n8n-nodes-composio');
+});
+
+test('the trigger receives what Composio sends, and verifies it by default', () => {
+	assert.deepEqual(trigger.group, ['trigger']);
+	assert.equal(trigger.webhooks[0].httpMethod, 'POST');
+	assert.equal(trigger.webhooks[0].path, 'composio-connect');
+	assert.equal(trigger.webhooks[0].responseMode, 'onReceived');
+
+	const verify = trigger.properties.find((p) => p.name === 'verifySignature');
+	assert.equal(verify.type, 'boolean');
+	assert.equal(verify.default, true, 'unverified events must be opt-in, never the default');
+
+	const events = trigger.properties.find((p) => p.name === 'events');
+	assert.ok(events.required, 'the trigger must say which events it reacts to');
+	assert.ok(events.options.some((o) => o.value === '*'));
+
+	for (const property of trigger.properties) {
+		assert.ok(property.description, `trigger parameter ${property.name} needs a description`);
+	}
+});
+
+test('the credential can hold the webhook signing secret the trigger verifies against', () => {
+	const secret = credential.properties.find((p) => p.name === 'webhookSecret');
+	assert.ok(secret, 'the credential needs a webhook signing secret field');
+	assert.equal(secret.typeOptions.password, true, 'the secret must be masked in the UI');
 });
 
 test('the package declares what n8n loads, with no runtime dependencies', () => {
 	const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 	assert.equal(pkg.name, '@steprotech/n8n-nodes-composio');
-	assert.deepEqual(pkg.n8n.nodes, ['dist/nodes/Composio/Composio.node.js']);
+	assert.deepEqual(pkg.n8n.nodes, [
+		'dist/nodes/Composio/Composio.node.js',
+		'dist/nodes/Composio/ComposioTrigger.node.js',
+	]);
 	assert.deepEqual(pkg.n8n.credentials, ['dist/credentials/ComposioApi.credentials.js']);
 	assert.equal(pkg.dependencies, undefined, 'community nodes must ship no runtime dependencies');
 	assert.equal(pkg.peerDependencies['n8n-workflow'], '*');
 	assert.ok(pkg.keywords.includes('n8n-community-node-package'));
 });
 
-test('the built output contains the compiled node and credential', () => {
+test('the built output contains the compiled node, trigger and credential', () => {
 	const distFiles = readdirSync(join(root, 'dist'), { recursive: true }).map(String);
 	assert.ok(distFiles.includes('nodes/Composio/Composio.node.js'));
+	assert.ok(distFiles.includes('nodes/Composio/ComposioTrigger.node.js'));
 	assert.ok(distFiles.includes('credentials/ComposioApi.credentials.js'));
 });

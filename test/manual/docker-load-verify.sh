@@ -78,12 +78,12 @@ wait_for_n8n
 echo "== 4. registered node types"
 docker exec "$NAME" sh -lc 'n8n export:nodes --output=/tmp/nodes.json >/dev/null 2>&1
 node -e "
-	const n = require(\"/tmp/nodes.json\");
-	const list = Array.isArray(n) ? n : (n.data || []);
-	const mine = list.filter((x) => String(x.name).includes(\"composio\"));
-	if (mine.length < 2) { console.error(\"expected at least 2 registered node types (node + tool), got \" + mine.length); process.exit(1); }
-	mine.forEach((x) => console.log(\"    \" + x.name + \" (\" + x.displayName + \")\"));
-	console.log(\"    total node types in this instance: \" + list.length);
+const n = require(\"/tmp/nodes.json\");
+const list = Array.isArray(n) ? n : (n.data || []);
+const mine = list.filter((x) => String(x.name).includes(\"composio\"));
+if (mine.length < 3) { console.error(\"expected 3 registered node types (node, tool variant, trigger), got \" + mine.length); process.exit(1); }
+mine.forEach((x) => console.log(\"    \" + x.name + \" (\" + x.displayName + \")\"));
+console.log(\"    total node types in this instance: \" + list.length);
 "'
 
 echo "== 5. registered credential type"
