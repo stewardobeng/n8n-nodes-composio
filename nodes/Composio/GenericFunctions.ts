@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IHttpRequestOptions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { META_TOOLS } from './metatools';
 
@@ -80,15 +81,39 @@ export function parseMcpPayload(body: unknown, expectedId: number): JsonRpcEnvel
 	throw new Error('Composio returned an empty response');
 }
 
+export const DEFAULT_BASE_URL = 'https://connect.composio.dev';
+
+/**
+ * The MCP endpoint is an absolute URL. n8n only applies a credential's base URL to a credential
+ * test, so real requests have to build the full address themselves; a relative url fails before it
+ * ever leaves n8n.
+ */
+export function buildMcpUrl(baseUrl?: string): string {
+	const trimmed = (baseUrl ?? '').trim();
+	const base = trimmed === '' ? DEFAULT_BASE_URL : trimmed;
+	return `${base.replace(/\/+$/, '')}/mcp`;
+}
+
 async function mcpRequest(
 	ctx: ComposioContext,
 	method: string,
 	params: Record<string, unknown>,
 ): Promise<JsonRpcEnvelope> {
 	const id = nextRequestId++;
+
+	let credentials;
+	try {
+		credentials = await ctx.getCredentials('composioApi');
+	} catch (error) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`Select a Composio API credential on this node first. (${(error as Error).message})`,
+		);
+	}
+
 	const options: IHttpRequestOptions = {
 		method: 'POST',
-		url: '/mcp',
+		url: buildMcpUrl(credentials.baseUrl as string | undefined),
 		headers: {
 			Accept: 'application/json, text/event-stream',
 			'Content-Type': 'application/json',
@@ -108,11 +133,33 @@ async function mcpRequest(
 		(options.headers as Record<string, string>)['mcp-session-id'] = cachedSession;
 	}
 
-	const response = (await ctx.helpers.httpRequestWithAuthentication.call(
-		ctx,
-		'composioApi',
-		options,
-	)) as RawHttpResponse;
+	let response: RawHttpResponse;
+	try {
+		response = (await ctx.helpers.httpRequestWithAuthentication.call(
+			ctx,
+			'composioApi',
+			options,
+		)) as RawHttpResponse;
+	} catch (error) {
+		const failure = error as { httpCode?: string; statusCode?: number; response?: { status?: number } };
+		const status = failure.statusCode ?? failure.response?.status ?? failure.httpCode;
+		const statusLabel = status === undefined ? '' : String(status);
+		if (statusLabel === '401' || statusLabel === '403') {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Composio rejected the credential (HTTP ${statusLabel}). Check that the consumer key is current and belongs to the workspace you expect.`,
+			);
+		}
+		if (statusLabel === '404') {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Composio answered 404 for ${options.url}. Check the base URL in the credential, which should normally be ${DEFAULT_BASE_URL}.`,
+			);
+		}
+		throw new NodeOperationError(ctx.getNode(), 'The request to Composio failed', {
+			description: `${statusLabel === '' ? '' : `HTTP ${statusLabel}. `}${(error as Error).message} (${options.url})`,
+		});
+	}
 
 	const sessionHeader = response.headers?.['mcp-session-id'];
 	const sessionId = Array.isArray(sessionHeader) ? sessionHeader[0] : sessionHeader;
@@ -134,7 +181,7 @@ async function ensureSession(ctx: ComposioContext): Promise<void> {
 	const envelope = await mcpRequest(ctx, 'initialize', {
 		protocolVersion: '2025-06-18',
 		capabilities: {},
-		clientInfo: { name: 'n8n-nodes-composio', version: '0.1.1' },
+		clientInfo: { name: 'n8n-nodes-composio', version: '0.2.1' },
 	});
 	if (envelope.error !== undefined) {
 		throw new Error(
