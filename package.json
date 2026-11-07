@@ -13,14 +13,14 @@
 		"automation"
 	],
 	"license": "MIT",
-	"homepage": "https://github.com/SteProTech/n8n-nodes-composio",
+	"homepage": "https://github.com/stewardobeng/n8n-nodes-composio",
 	"author": {
 		"name": "Steward Obeng",
 		"email": "stewardobeng@gmail.com"
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/SteProTech/n8n-nodes-composio.git"
+		"url": "git+https://github.com/stewardobeng/n8n-nodes-composio.git"
 	},
 	"main": "index.js",
 	"scripts": {
@@ -57,6 +57,6 @@
 		"n8n-workflow": "*"
 	},
 	"bugs": {
-		"url": "https://github.com/SteProTech/n8n-nodes-composio/issues"
+		"url": "https://github.com/stewardobeng/n8n-nodes-composio/issues"
 	}
 }
