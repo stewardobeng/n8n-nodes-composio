@@ -216,7 +216,9 @@ test('the package declares what n8n loads, with no runtime dependencies', () => 
 });
 
 test('the built output contains the compiled node, trigger and credential', () => {
-	const distFiles = readdirSync(join(root, 'dist'), { recursive: true }).map(String);
+	const distFiles = readdirSync(join(root, 'dist'), { recursive: true }).map((file) =>
+		String(file).replaceAll('\\', '/'),
+	);
 	assert.ok(distFiles.includes('nodes/Composio/Composio.node.js'));
 	assert.ok(distFiles.includes('nodes/Composio/ComposioTrigger.node.js'));
 	assert.ok(distFiles.includes('credentials/ComposioApi.credentials.js'));
