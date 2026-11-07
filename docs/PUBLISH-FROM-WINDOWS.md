@@ -1,3 +1,5 @@
+> **For n8n Creator Portal verification:** do not use local publishing instructions in this historical guide. Use the GitHub Actions process in [PUBLISHING.md](PUBLISHING.md) to publish with provenance.
+
 # Publishing from a Windows machine
 
 Everything below runs in PowerShell on your own computer. No SSH, no token stored on any server.
